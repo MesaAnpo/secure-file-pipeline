@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,7 +28,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 public class FileController {
 
     @Autowired
-    private StringRedisTemplate redis;
+    private RedisTemplate<String, String> redisTemplate;
 
     @Autowired
     private S3Client s3;
@@ -46,15 +46,15 @@ public class FileController {
                 PutObjectRequest.builder().bucket(bucket).key(id).build(),
                 RequestBody.fromInputStream(file.getInputStream(), file.getSize())
         );
-        redis.opsForList().rightPush("scan_tasks", id);
-        redis.opsForValue().set("result:" + id, "pending");
+        redisTemplate.opsForList().rightPush("scan_tasks", id);
+        redisTemplate.opsForValue().set("result:" + id, "pending");
         audit.log("upload:" + id + ",size=" + file.getSize());
         return ResponseEntity.ok(id);
     }
 
     @GetMapping("/status/{id}")
     public ResponseEntity<String> status(@PathVariable String id) {
-        String status = redis.opsForValue().get("result:" + id);
+        String status = redisTemplate.opsForValue().get("result:" + id);
         if (status == null) {
             return ResponseEntity.notFound().build();
         }
@@ -64,7 +64,7 @@ public class FileController {
 
     @GetMapping("/download/{id}")
     public ResponseEntity<?> download(@PathVariable String id) throws IOException {
-        String status = redis.opsForValue().get("result:" + id);
+        String status = redisTemplate.opsForValue().get("result:" + id);
         if (status == null || !"clean".equalsIgnoreCase(status)) {
             return ResponseEntity.status(403).body("File not available");
         }
@@ -88,7 +88,7 @@ public class FileController {
     }
 
     private String getMetric(String key) {
-        String v = redis.opsForValue().get(key);
+        String v = redisTemplate.opsForValue().get(key);
         return v == null ? "0" : v;
     }
 }
