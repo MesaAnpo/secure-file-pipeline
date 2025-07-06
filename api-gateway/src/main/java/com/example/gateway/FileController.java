@@ -40,7 +40,7 @@ public class FileController {
     private String bucket;
 
     @PostMapping("/upload")
-    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
         String id = UUID.randomUUID().toString();
         s3.putObject(
                 PutObjectRequest.builder().bucket(bucket).key(id).build(),
@@ -48,8 +48,15 @@ public class FileController {
         );
         redisTemplate.opsForList().rightPush("scan_tasks", id);
         redisTemplate.opsForValue().set("result:" + id, "pending");
+        String originalName = file.getOriginalFilename();
+        if (originalName != null) {
+            redisTemplate.opsForValue().set("filename:" + id, originalName);
+        }
         audit.log("upload:" + id + ",size=" + file.getSize());
-        return ResponseEntity.ok(id);
+        Map<String, String> resp = new HashMap<>();
+        resp.put("id", id);
+        resp.put("filename", originalName);
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/status/{id}")
@@ -72,7 +79,16 @@ public class FileController {
         try {
             ResponseBytes<GetObjectResponse> obj = s3.getObjectAsBytes(
                     GetObjectRequest.builder().bucket(bucket).key(id).build());
-            return ResponseEntity.ok(obj.asByteArray());
+            String name = redisTemplate.opsForValue().get("filename:" + id);
+            org.springframework.http.ContentDisposition cd =
+                    org.springframework.http.ContentDisposition
+                            .attachment()
+                            .filename(name == null ? id : name)
+                            .build();
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+                    .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                    .body(obj.asByteArray());
         } catch (NoSuchKeyException e) {
             return ResponseEntity.notFound().build();
         }

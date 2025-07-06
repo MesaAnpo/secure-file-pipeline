@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 @WebMvcTest(FileController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -70,13 +71,15 @@ public class FileControllerTests {
     @Test
     void uploadSetsPendingStatus() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "hello.txt", "text/plain", "hello".getBytes());
-        String id = mockMvc.perform(multipart("/upload").file(file).with(httpBasic("admin", "admin")))
+        String response = mockMvc.perform(multipart("/upload").file(file).with(httpBasic("admin", "admin")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
+        String id = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response).get("id").asText();
 
         verify(s3).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         verify(listOps).rightPush("scan_tasks", id);
         verify(valueOps).set("result:" + id, "pending");
+        verify(valueOps).set("filename:" + id, "hello.txt");
         verify(audit).log("upload:" + id + ",size=" + file.getSize());
         when(valueOps.get("result:" + id)).thenReturn("pending");
         String status = redisTemplate.opsForValue().get("result:" + id);
@@ -87,9 +90,10 @@ public class FileControllerTests {
     void uploadStatusDownloadFlow() throws Exception {
         byte[] content = "hello".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "hello.txt", "text/plain", content);
-        String id = mockMvc.perform(multipart("/upload").file(file).with(httpBasic("admin", "admin")))
+        String resp = mockMvc.perform(multipart("/upload").file(file).with(httpBasic("admin", "admin")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
+        String id = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resp).get("id").asText();
 
         when(valueOps.get("result:" + id)).thenReturn("pending");
         mockMvc.perform(get("/status/" + id).with(httpBasic("admin", "admin")))
@@ -103,8 +107,10 @@ public class FileControllerTests {
         ResponseBytes<GetObjectResponse> bytes = ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), content);
         when(s3.getObjectAsBytes(any(GetObjectRequest.class))).thenReturn(bytes);
 
+        when(valueOps.get("filename:" + id)).thenReturn("hello.txt");
         mockMvc.perform(get("/download/" + id).with(httpBasic("admin", "admin")))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"hello.txt\""))
                 .andExpect(content().bytes(content));
 
         verify(audit).log("download:" + id);

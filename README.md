@@ -40,7 +40,9 @@ These are read by the worker and gateway containers.
 Upload a file:
 
 ```bash
-curl -u $API_USERNAME:$API_PASSWORD -F file=@test.txt http://localhost:8080/upload
+curl -u $API_USERNAME:$API_PASSWORD -F file=@test.txt \
+  http://localhost:8080/upload
+# => {"id":"<uuid>","filename":"test.txt"}
 ```
 
 Check status:
@@ -52,7 +54,8 @@ curl -u $API_USERNAME:$API_PASSWORD http://localhost:8080/status/<id>
 Download a clean file:
 
 ```bash
-curl -u $API_USERNAME:$API_PASSWORD -O http://localhost:8080/download/<id>
+curl -u $API_USERNAME:$API_PASSWORD -OJ \
+  http://localhost:8080/download/<id>
 ```
 
 View Prometheus metrics:
