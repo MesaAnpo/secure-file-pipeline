@@ -6,12 +6,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scanner.worker import scan_file
 
 class DummyClamd:
-    def scan(self, path):
-        return {path: ('stream', 'OK')}
+    def instream(self, buff):
+        return {'stream': ('OK', 'dummy')}
 
 
-def test_scan_file_result(monkeypatch):
+def test_scan_file_result(monkeypatch, tmp_path):
     # Patch ClamAV client to avoid network calls
     monkeypatch.setattr('scanner.worker.clamd.ClamdNetworkSocket', lambda host=None: DummyClamd())
-    result = scan_file('/tmp/fakefile.txt')
+    f = tmp_path / 'fakefile.txt'
+    f.write_text('dummy')
+    result = scan_file(str(f))
     assert result in ['CLEAN', 'INFECTED']
