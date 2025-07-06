@@ -1,0 +1,10 @@
+# Java
+/target
+
+# Python
+__pycache__/
+*.pyc
+
+# Docker
+**/node_modules
+.env

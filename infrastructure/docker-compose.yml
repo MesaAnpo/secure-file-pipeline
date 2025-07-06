@@ -1,0 +1,49 @@
+version: '3.9'
+services:
+  gateway:
+    build: ../api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - S3_ENDPOINT=http://minio:9000
+      - S3_BUCKET=uploads
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+    depends_on:
+      - redis
+      - worker
+      - minio
+  worker:
+    build: ../scanner-worker
+    depends_on:
+      - clamav
+      - redis
+      - minio
+    environment:
+      - S3_ENDPOINT=http://minio:9000
+      - S3_BUCKET=uploads
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - METRICS_PORT=8000
+    ports:
+      - "8000:8000"
+  redis:
+    image: redis:6-alpine
+  clamav:
+    image: mkodockx/docker-clamav:alpine
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdscan", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"

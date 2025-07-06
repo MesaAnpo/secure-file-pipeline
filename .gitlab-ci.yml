@@ -1,0 +1,56 @@
+stages:
+  - test
+  - build
+  - smoke
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+cache:
+  paths:
+    - .m2/repository
+
+test_python:
+  stage: test
+  image: python:3.11
+  before_script:
+    - pip install -r scanner-worker/requirements.txt
+  script:
+    - flake8 scanner-worker/scanner
+    - pytest -q scanner-worker/tests
+
+test_java:
+  stage: test
+  image: maven:3.9.6-eclipse-temurin-17
+  script:
+    - mvn -f api-gateway/pom.xml clean verify -DskipTests=false
+
+build_docker:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t file-scan-gateway ./api-gateway
+    - docker build -t file-scan-worker ./scanner-worker
+
+smoke_test:
+  stage: smoke
+  image: docker/compose:1.29.2
+  services:
+    - docker:dind
+  variables:
+    COMPOSE_DOCKER_CLI_BUILD: 1
+  script:
+    - docker-compose -f infrastructure/docker-compose.yml up -d
+    - |
+      for i in {1..30}; do
+        if curl -fs -u admin:admin http://localhost:8080/actuator/health >/dev/null; then
+          break
+        fi
+        sleep 5
+      done
+    - id=$(curl -fs -u admin:admin -F file=@README.md http://localhost:8080/upload)
+    - curl -fs -u admin:admin http://localhost:8080/status/$id | grep -q pending
+  after_script:
+    - docker-compose -f infrastructure/docker-compose.yml down

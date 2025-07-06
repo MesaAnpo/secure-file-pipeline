@@ -1,0 +1,11 @@
+<configuration>
+    <appender name="AUDIT" class="ch.qos.logback.core.FileAppender">
+        <file>logs/audit.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="audit" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT" />
+    </logger>
+</configuration>
