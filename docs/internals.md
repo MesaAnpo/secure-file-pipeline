@@ -13,11 +13,11 @@ infrastructure/ - Docker Compose, ClamAV and Redis setup
 ## Flow
 
 1. A client uploads a file via `POST /upload`.
-2. The gateway uploads the file to an S3 bucket and enqueues the object key on the Redis queue `scan_tasks`.
+2. The gateway uploads the file to an S3 bucket, stores the original filename under `filename:<id>` in Redis and enqueues the object key on the Redis queue `scan_tasks`.
 3. The worker waits for new items on that queue.
 4. When a key is received, it downloads the object, scans the file with ClamAV and writes the result to `result:<id>` in Redis while incrementing Prometheus counters and the Redis metrics keys.
 5. `GET /status/{id}` reads the value from Redis.
-6. `GET /download/{id}` streams the object from S3 only if the stored result equals `clean`.
+6. `GET /download/{id}` streams the object from S3 only if the stored result equals `clean` and sets a `Content-Disposition` header with the saved filename.
 7. Prometheus metrics are exposed on port `8000` by the worker and at `/actuator/prometheus` on the gateway.
 
 This simple pattern keeps the gateway responsive while offloading heavy scanning work to the worker container.
