@@ -40,13 +40,14 @@ def scan_file(path: str) -> str:
     """Return ``STATUS_CLEAN`` or ``STATUS_INFECTED`` for the given file."""
     cd = clamd.ClamdNetworkSocket(host=CLAMAV_HOST)
     try:
-        result = cd.scan(path)
+        with open(path, "rb") as f:
+            result = cd.instream(f)
     except Exception as exc:  # pragma: no cover - network error
         logger.error("ClamAV scan failed: %s", exc)
         return STATUS_INFECTED
-    if result is None:
+    if not result:
         return STATUS_CLEAN
-    _, status = result[path]
+    status, _ = next(iter(result.values()))
     return STATUS_CLEAN if status == "OK" else STATUS_INFECTED
 
 
