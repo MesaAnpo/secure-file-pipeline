@@ -77,6 +77,7 @@ public class FileControllerTests {
         verify(s3).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         verify(listOps).rightPush("scan_tasks", id);
         verify(valueOps).set("result:" + id, "pending");
+        verify(audit).log("upload:" + id + ",size=" + file.getSize());
         when(valueOps.get("result:" + id)).thenReturn("pending");
         String status = redisTemplate.opsForValue().get("result:" + id);
         org.assertj.core.api.Assertions.assertThat(status).isEqualTo("pending");
@@ -94,6 +95,7 @@ public class FileControllerTests {
         mockMvc.perform(get("/status/" + id).with(httpBasic("admin", "admin")))
                 .andExpect(status().isOk())
                 .andExpect(content().string("pending"));
+        verify(audit).log("status:" + id + ",pending");
 
         redisTemplate.opsForValue().set("result:" + id, "clean");
         when(valueOps.get("result:" + id)).thenReturn("clean");
@@ -104,6 +106,8 @@ public class FileControllerTests {
         mockMvc.perform(get("/download/" + id).with(httpBasic("admin", "admin")))
                 .andExpect(status().isOk())
                 .andExpect(content().bytes(content));
+
+        verify(audit).log("download:" + id);
 
         verify(s3).getObjectAsBytes(any(GetObjectRequest.class));
     }
