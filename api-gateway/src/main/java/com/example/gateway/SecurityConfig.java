@@ -59,6 +59,7 @@ public class SecurityConfig {
 
     // Создаём JwtDecoder вручную, вместо вызова issuerUri()
     @Bean
+    @ConditionalOnProperty(name = "OIDC_ISSUER_URI")
     public JwtDecoder jwtDecoder() {
         return JwtDecoders.fromOidcIssuerLocation(issuer);
     }

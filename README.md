@@ -23,7 +23,7 @@ More details and diagrams can be found in [docs/architecture.md](docs/architectu
 REDIS_HOST=redis
 CLAMAV_HOST=clamav
 SCAN_QUEUE=scan_tasks
-SPRING_REDIS_HOST=redis
+SPRING_DATA_REDIS_HOST=redis
 S3_BUCKET=uploads
 S3_ENDPOINT=http://minio:9000
 API_USERNAME=admin
