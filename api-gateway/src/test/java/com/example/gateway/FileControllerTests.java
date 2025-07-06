@@ -7,7 +7,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.mock.web.MockMultipartFile;
@@ -37,7 +37,7 @@ public class FileControllerTests {
     private S3Client s3;
 
     @MockBean
-    private StringRedisTemplate redisTemplate;
+    private RedisTemplate<String, String> redisTemplate;
 
     @MockBean
     private AuditService audit;
