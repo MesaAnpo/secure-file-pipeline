@@ -16,7 +16,7 @@ spec:
         - name: gateway
           image: your-registry/gateway:latest
           env:
-            - name: SPRING_REDIS_HOST
+            - name: SPRING_DATA_REDIS_HOST
               value: redis
           ports:
             - containerPort: 8080

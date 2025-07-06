@@ -13,6 +13,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Configuration
 public class S3Config {
@@ -25,6 +28,9 @@ public class S3Config {
 
     @Value("${AWS_SECRET_ACCESS_KEY:dummy}")
     private String secretAccessKey;
+
+    @Value("${S3_BUCKET:uploads}")
+    private String bucket;
 
     @Bean
     public S3Client s3Client() {
@@ -42,6 +48,12 @@ public class S3Config {
                         .pathStyleAccessEnabled(true)
                         .build());
         }
-        return builder.build();
+        S3Client client = builder.build();
+        try {
+            client.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+        } catch (S3Exception e) {
+            client.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
+        }
+        return client;
     }
 }
